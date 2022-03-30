@@ -20,7 +20,7 @@ def main():
         f.truncate(0)
         json.dump(res_json, f, indent=4)
 
-    with open(pictures[0].split("/")[3].split(".")[0] + ".jpg", "wb") as f:
+    with open("images/" + pictures[0].split("/")[3].split(".")[0] + ".jpg", "wb") as f:
         f.write(requests.get(pictures[0]).content)
 
 if __name__ == "__main__":

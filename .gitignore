@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Config files
+config.py
+oauth_info.json
+image_data.db
+
+# Images folder
+images/
+image_data_bak.db
+log.txt
+image_data.db

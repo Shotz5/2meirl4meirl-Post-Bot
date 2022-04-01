@@ -131,3 +131,6 @@ dmypy.json
 # Config files
 config.py
 oauth_info.json
+
+# Images folder
+images/

@@ -6,20 +6,18 @@ from config import api_info
 import json
 
 def main():
-    # conn = init_db()
-    # pull_latest_from_reddit(conn)
+    conn = init_db()
+    pull_latest_from_reddit(conn)
     # print(read_image_data(conn, "wj5d7830skq81.jpg"))
 
     # twitter_oauth_generation()
     auth = twitter_sign_in()
+    print(upload_photo(conn, auth))
 
-    response = auth.post(
-        "https://api.twitter.com/2/tweets",
-        json = {"text": "Hello, world x3!"},
-    )
-
-    if response.status_code == 201:
-        print("Tweeted!")
+    # response = auth.post(
+    #     "https://api.twitter.com/2/tweets",
+    #     json = {"text": "Hello, world x6!"},
+    # )
 
 def twitter_oauth_generation():
     consumer_key = api_info["api_key"]
@@ -76,6 +74,21 @@ def twitter_sign_in():
     )
 
     return oauth
+
+def upload_photo(conn, auth):
+    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    row = cur.fetchall()[0]
+
+    with open("images/" + row[0], "wb") as f:
+        f.write(requests.get(row[1]).content)
+    
+    media_api = "https://upload.twitter.com/1.1/media/upload.json"
+    media = auth.post(media_api, files={"media": open("images/" + row[0], "rb"), "media_category": "tweet_image"})
+    print(media.text)
+
+    # update = """UPDATE images SET downloaded = 1 WHERE file_name = ?"""
 
 def pull_latest_from_reddit(conn):
     api_url = "https://www.reddit.com/r/2meirl4meirl/hot/.json"

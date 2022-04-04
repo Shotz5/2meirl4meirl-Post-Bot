@@ -4,20 +4,22 @@ import sqlite3
 from requests_oauthlib import OAuth1Session
 from config import api_info
 import json
+import time
 
 def main():
-    conn = init_db()
-    pull_latest_from_reddit(conn)
-    # print(read_image_data(conn, "wj5d7830skq81.jpg"))
+    
+    conn = create_connection("image_data.db")
 
-    # twitter_oauth_generation()
-    auth = twitter_sign_in()
-    print(upload_photo(conn, auth))
-
-    # response = auth.post(
-    #     "https://api.twitter.com/2/tweets",
-    #     json = {"text": "Hello, world x6!"},
-    # )
+    while(True):
+        pull_latest_from_reddit(conn)
+        # twitter_oauth_generation()
+        auth = twitter_sign_in()
+        full_file_name = upload_random_photo(conn, auth)
+        if (full_file_name is not None):
+            print(read_image_data(conn, full_file_name))
+            tweet_uploaded_photo(conn, auth, full_file_name)
+            print(read_image_data(conn, full_file_name))
+        time.sleep(300)
 
 def twitter_oauth_generation():
     consumer_key = api_info["api_key"]
@@ -75,20 +77,87 @@ def twitter_sign_in():
 
     return oauth
 
-def upload_photo(conn, auth):
-    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1"""
+def upload_random_photo(conn, auth):
+    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1""" 
     cur = conn.cursor()
     cur.execute(sql)
     row = cur.fetchall()[0]
 
+    if (row == None):
+        print("No new images to upload")
+        return None
+
     with open("images/" + row[0], "wb") as f:
-        f.write(requests.get(row[1]).content)
+        f.write(requests.get(row[2]).content)
     
     media_api = "https://upload.twitter.com/1.1/media/upload.json"
-    media = auth.post(media_api, files={"media": open("images/" + row[0], "rb"), "media_category": "tweet_image"})
-    print(media.text)
+    media = auth.post(media_api,
+                      files={"media": open("images/" + row[0], "rb"),
+                             "media_category": "tweet_image"})
+    
+    if (media.status_code == 200):
+        update = """UPDATE images SET downloaded = 1, twitter_media_id = ? WHERE file_name = ?"""
+        media_id = media.json()["media_id_string"]
+        cur = conn.cursor()
+        cur.execute(update, (media_id, row[0]))
+        conn.commit()
+        return row[0]
+    else:
+        print(media.text)
+        print("Error uploading image")
+        exit(0)
 
-    # update = """UPDATE images SET downloaded = 1 WHERE file_name = ?"""
+def tweet_uploaded_photo(conn, auth, file_name):
+    get_row = """SELECT * FROM images WHERE file_name = ? LIMIT 1"""
+    cur = conn.cursor()
+    cur.execute(get_row, (file_name,))
+    row = cur.fetchall()[0]
+
+    tweet_api = "https://api.twitter.com/2/tweets"
+    tweet_object_image = {
+        "text": row[1],
+        "media": {
+            "media_ids": [row[6]]
+        }
+    }
+    tweet_headers = {"Content-Type": "application/json"}
+    response = auth.post(
+        tweet_api,
+        headers=tweet_headers,
+        json=tweet_object_image
+    )
+
+    if (response.status_code == 201):
+        update = """UPDATE images SET posted = 1 WHERE file_name = ?"""
+        cur = conn.cursor()
+        cur.execute(update, (file_name,))
+        conn.commit()
+        print("Tweeted image")
+
+        res = response.json()
+        # Set up reply tweet
+        tweet_object_reply = {
+            "text": "Original post: https://www.reddit.com" + row[3],
+            "reply": {
+                "in_reply_to_tweet_id": res["data"]["id"]
+            }
+        }
+        reply_response = auth.post(
+            tweet_api,
+            headers=tweet_headers,
+            json=tweet_object_reply
+        )
+
+        if (reply_response.status_code == 201):
+            print("Replied to original post")
+        else:
+            print(reply_response.text)
+            print("Error replying to original post")
+            exit(0)        
+    else:
+        print(response.text)
+        print("Error tweeting image")
+        exit(0)
 
 def pull_latest_from_reddit(conn):
     api_url = "https://www.reddit.com/r/2meirl4meirl/hot/.json"
@@ -103,9 +172,11 @@ def pull_latest_from_reddit(conn):
             l = []
             image_url = i["data"]["preview"]["images"][0]["source"]["url"]
             op_url = i["data"]["permalink"]
+            post_title = i["data"]["title"]
             fixed_url = html.unescape(image_url)
             l.append(fixed_url)
             l.append(op_url)
+            l.append(post_title)
             image_urls.append(l)
 
     for i in image_urls:
@@ -113,18 +184,10 @@ def pull_latest_from_reddit(conn):
         file_type = "." + i[0].split("/")[3].split(".")[1].split("?")[0]
         file_full_name = file_name + file_type
 
-        data = (file_full_name, i[0], i[1], False, False, False)
+        data = (file_full_name, i[2], i[0], i[1], False, False, False)
         insert_image_data(conn, data)
 
     conn.commit()
-
-def init_db():
-    conn = create_connection("image_data.db")
-    while (not create_table(conn)):
-        print("Dropping table")
-        conn.execute("DROP TABLE IF EXISTS images")
-    print("Created table")
-    return conn
 
 def create_connection(db_file):
     conn = None
@@ -140,10 +203,12 @@ def create_connection(db_file):
 def create_table(conn):
     image_data_table  = """CREATE TABLE images (
                             file_name text PRIMARY KEY,
+                            post_title text NOT NULL,
                             url text NOT NULL,
                             op_url text NOT NULL,
                             posted boolean NOT NULL,
                             downloaded boolean NOT NULL,
+                            twitter_media_id text,
                             deleted boolean NOT NULL
                         );"""
     try:
@@ -155,8 +220,8 @@ def create_table(conn):
         return False
 
 def insert_image_data(conn, data):
-    sql = ''' INSERT INTO images(file_name, url, op_url, posted, downloaded, deleted)
-              VALUES(?,?,?,?,?,?) '''
+    sql = ''' INSERT INTO images(file_name, post_title, url, op_url, posted, downloaded, deleted)
+              VALUES(?,?,?,?,?,?,?) '''
     try:
         cur = conn.cursor()
         cur.execute(sql, data)

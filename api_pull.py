@@ -19,7 +19,7 @@ def main():
             print(read_image_data(conn, full_file_name))
             tweet_uploaded_photo(conn, auth, full_file_name)
             print(read_image_data(conn, full_file_name))
-        time.sleep(300)
+        time.sleep(900)
 
 def twitter_oauth_generation():
     consumer_key = api_info["api_key"]
@@ -115,7 +115,7 @@ def tweet_uploaded_photo(conn, auth, file_name):
 
     tweet_api = "https://api.twitter.com/2/tweets"
     tweet_object_image = {
-        "text": row[1],
+        "text": row[1] + " redd.it/" + row[3],
         "media": {
             "media_ids": [row[6]]
         }
@@ -134,26 +134,6 @@ def tweet_uploaded_photo(conn, auth, file_name):
         conn.commit()
         print("Tweeted image")
 
-        res = response.json()
-        # Set up reply tweet
-        tweet_object_reply = {
-            "text": "Original post: https://www.reddit.com" + row[3],
-            "reply": {
-                "in_reply_to_tweet_id": res["data"]["id"]
-            }
-        }
-        reply_response = auth.post(
-            tweet_api,
-            headers=tweet_headers,
-            json=tweet_object_reply
-        )
-
-        if (reply_response.status_code == 201):
-            print("Replied to original post")
-        else:
-            print(reply_response.text)
-            print("Error replying to original post")
-            exit(0)        
     else:
         print(response.text)
         print("Error tweeting image")
@@ -171,7 +151,7 @@ def pull_latest_from_reddit(conn):
         if "preview" in i["data"]:
             l = []
             image_url = i["data"]["preview"]["images"][0]["source"]["url"]
-            op_url = i["data"]["permalink"]
+            op_url = i["data"]["id"]
             post_title = i["data"]["title"]
             fixed_url = html.unescape(image_url)
             l.append(fixed_url)
@@ -194,18 +174,22 @@ def create_connection(db_file):
     try:
         conn = sqlite3.connect(db_file)
         print("Connection to SQLite DB successful")
+        if create_table(conn):
+            print("Table created")
+        else:
+            print("Table already exists")
     except sqlite3.Error as e:
-        print("Unable to make DB connection" + str(e))
+        print("Unable to make DB connection " + str(e))
         exit(0)
     finally:
         return conn
 
 def create_table(conn):
-    image_data_table  = """CREATE TABLE images (
+    image_data_table  = """CREATE TABLE IF NOT EXISTS images (
                             file_name text PRIMARY KEY,
                             post_title text NOT NULL,
                             url text NOT NULL,
-                            op_url text NOT NULL,
+                            id text NOT NULL,
                             posted boolean NOT NULL,
                             downloaded boolean NOT NULL,
                             twitter_media_id text,
@@ -220,12 +204,13 @@ def create_table(conn):
         return False
 
 def insert_image_data(conn, data):
-    sql = ''' INSERT INTO images(file_name, post_title, url, op_url, posted, downloaded, deleted)
-              VALUES(?,?,?,?,?,?,?) '''
+    sql = ''' INSERT INTO images(file_name, post_title, url, id, posted, downloaded, deleted)
+              VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING '''
     try:
         cur = conn.cursor()
         cur.execute(sql, data)
-        return cur.lastrowid
+        conn.commit()
+        return True
     except:
         print("Error inserting data")
 

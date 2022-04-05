@@ -20,6 +20,7 @@ def main():
             print(read_image_data(conn, full_file_name))
             tweet_uploaded_photo(conn, auth, full_file_name)
             print(read_image_data(conn, full_file_name))
+            conn.commit()
         time.sleep(900)
 
 def twitter_oauth_generation():
@@ -218,7 +219,6 @@ def insert_image_data(conn, data):
     try:
         cur = conn.cursor()
         cur.execute(sql, data)
-        conn.commit()
         return True
     except:
         print("Error inserting data")

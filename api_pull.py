@@ -1,3 +1,4 @@
+from numpy import VisibleDeprecationWarning
 import requests
 import html
 import sqlite3
@@ -92,8 +93,7 @@ def upload_random_photo(conn, auth):
     
     media_api = "https://upload.twitter.com/1.1/media/upload.json"
     media = auth.post(media_api,
-                      files={"media": open("images/" + row[0], "rb"),
-                             "media_category": "tweet_image"})
+                      files={"media": open("images/" + row[0], "rb")})
     
     if (media.status_code == 200):
         update = """UPDATE images SET downloaded = 1, twitter_media_id = ? WHERE file_name = ?"""
@@ -133,7 +133,6 @@ def tweet_uploaded_photo(conn, auth, file_name):
         cur.execute(update, (file_name,))
         conn.commit()
         print("Tweeted image")
-
     else:
         print(response.text)
         print("Error tweeting image")
@@ -145,27 +144,37 @@ def pull_latest_from_reddit(conn):
     res = requests.get(api_url, headers=headers)
     res_json = res.json()
 
-    image_urls = []
+    data_tuples = []
 
     for i in res_json["data"]["children"]:
-        if "preview" in i["data"]:
-            l = []
+        if "preview" in i["data"] and i["data"]["is_video"] == False:
             image_url = i["data"]["preview"]["images"][0]["source"]["url"]
+
+            file_name = image_url.split("/")[3].split(".")[0]
+            file_type = "." + image_url.split("/")[3].split(".")[1].split("?")[0]
+            file_full_name = file_name + file_type
+
             op_url = i["data"]["id"]
             post_title = i["data"]["title"]
             fixed_url = html.unescape(image_url)
-            l.append(fixed_url)
-            l.append(op_url)
-            l.append(post_title)
-            image_urls.append(l)
+            data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
+            data_tuples.append(data)
+            
+        elif i["data"]["is_video"] == True:
+            video_url = i["data"]["media"]["reddit_video"]["fallback_url"]
 
-    for i in image_urls:
-        file_name = i[0].split("/")[3].split(".")[0]
-        file_type = "." + i[0].split("/")[3].split(".")[1].split("?")[0]
-        file_full_name = file_name + file_type
+            file_name = video_url.split("/")[3]
+            file_type = "." + video_url.split("/")[4].split(".")[1].split("?")[0]
+            file_full_name = file_name + file_type
+            
+            op_url = i["data"]["id"]
+            post_title = i["data"]["title"]
+            fixed_url = html.unescape(video_url)
+            data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
+            data_tuples.append(data)
 
-        data = (file_full_name, i[2], i[0], i[1], False, False, False)
-        insert_image_data(conn, data)
+    for i in data_tuples:
+        insert_image_data(conn, i)
 
     conn.commit()
 

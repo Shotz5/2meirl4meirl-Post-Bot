@@ -1,4 +1,3 @@
-from numpy import VisibleDeprecationWarning
 import requests
 import html
 import sqlite3
@@ -22,6 +21,8 @@ def main():
             print(read_image_data(conn, full_file_name))
             conn.commit()
         time.sleep(900)
+    # print_table(conn)
+    # print_table_test(conn)
 
 def twitter_oauth_generation():
     consumer_key = api_info["api_key"]
@@ -161,18 +162,18 @@ def pull_latest_from_reddit(conn):
             data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
             data_tuples.append(data)
             
-        elif i["data"]["is_video"] == True:
-            video_url = i["data"]["media"]["reddit_video"]["fallback_url"]
+        # elif i["data"]["is_video"] == True:
+        #     video_url = i["data"]["media"]["reddit_video"]["fallback_url"]
 
-            file_name = video_url.split("/")[3]
-            file_type = "." + video_url.split("/")[4].split(".")[1].split("?")[0]
-            file_full_name = file_name + file_type
+        #     file_name = video_url.split("/")[3]
+        #     file_type = "." + video_url.split("/")[4].split(".")[1].split("?")[0]
+        #     file_full_name = file_name + file_type
             
-            op_url = i["data"]["id"]
-            post_title = i["data"]["title"]
-            fixed_url = html.unescape(video_url)
-            data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
-            data_tuples.append(data)
+        #     op_url = i["data"]["id"]
+        #     post_title = i["data"]["title"]
+        #     fixed_url = html.unescape(video_url)
+        #     data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
+        #     data_tuples.append(data)
 
     for i in data_tuples:
         insert_image_data(conn, i)
@@ -231,6 +232,31 @@ def read_image_data(conn, file_name):
         return cur.fetchone()
     except:
         print("Error reading data")
+
+def print_table(conn):
+    sql = ''' SELECT * FROM images '''
+    try:
+        cur = conn.cursor()
+        cur.execute(sql)
+        rows = cur.fetchall()
+        for row in rows:
+            print(row)
+    except:
+        print("Error printing table")
+
+def print_table_test(conn):
+    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1"""
+    cur = conn.cursor()
+    cur.execute(sql)
+    row = cur.fetchall()
+
+    for i in row:
+        print(i)
+
+def clear_videos(conn):
+    sql = """DELETE FROM images WHERE file_name LIKE '%.mp4%'"""
+    cur = conn.cursor()
+    cur.execute(sql)
 
 if __name__ == "__main__":
     main()

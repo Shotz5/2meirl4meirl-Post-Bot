@@ -84,11 +84,13 @@ def upload_random_photo(conn, auth):
     sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1""" 
     cur = conn.cursor()
     cur.execute(sql)
-    row = cur.fetchall()[0]
+    row = cur.fetchall()
 
     if (row == None):
         print("No new images to upload")
         return None
+
+    row = row[0]
 
     with open("images/" + row[0], "wb") as f:
         f.write(requests.get(row[2]).content)

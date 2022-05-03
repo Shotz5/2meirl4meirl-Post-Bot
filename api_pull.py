@@ -9,6 +9,11 @@ import time
 def main():
     
     conn = create_connection("image_data.db")
+    # if (add_column("upvotes", conn)):
+    #     print("Column added")
+
+    # pull_latest_from_reddit(conn)
+    # print_table_test(conn)
 
     while(True):
         pull_latest_from_reddit(conn)
@@ -81,7 +86,7 @@ def twitter_sign_in():
     return oauth
 
 def upload_random_photo(conn, auth):
-    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1""" 
+    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY upvotes DESC LIMIT 1"""
     cur = conn.cursor()
     cur.execute(sql)
     row = cur.fetchall()
@@ -161,7 +166,8 @@ def pull_latest_from_reddit(conn):
             op_url = i["data"]["id"]
             post_title = i["data"]["title"]
             fixed_url = html.unescape(image_url)
-            data = (file_full_name, post_title, fixed_url, op_url, False, False, False)
+            upvotes = i["data"]["ups"]
+            data = (file_full_name, post_title, fixed_url, op_url, False, False, False, upvotes)
             data_tuples.append(data)
             
         # elif i["data"]["is_video"] == True:
@@ -206,7 +212,8 @@ def create_table(conn):
                             posted boolean NOT NULL,
                             downloaded boolean NOT NULL,
                             twitter_media_id text,
-                            deleted boolean NOT NULL
+                            deleted boolean NOT NULL,
+                            upvotes integer NOT NULL DEFAULT 0
                         );"""
     try:
         c = conn.cursor()
@@ -216,9 +223,19 @@ def create_table(conn):
         print(e)
         return False
 
+def add_column(column_name, conn):
+    add_column_sql = """ALTER TABLE images ADD COLUMN """ + column_name + """ INT NOT NULL DEFAULT 0"""
+    try:
+        c = conn.cursor()
+        c.execute(add_column_sql)
+        return True
+    except sqlite3.Error as e:
+        print(e)
+        return False
+
 def insert_image_data(conn, data):
-    sql = ''' INSERT INTO images(file_name, post_title, url, id, posted, downloaded, deleted)
-              VALUES(?,?,?,?,?,?,?) ON CONFLICT DO NOTHING '''
+    sql = ''' INSERT INTO images(file_name, post_title, url, id, posted, downloaded, deleted, upvotes)
+              VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING '''
     try:
         cur = conn.cursor()
         cur.execute(sql, data)
@@ -247,7 +264,7 @@ def print_table(conn):
         print("Error printing table")
 
 def print_table_test(conn):
-    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY RANDOM() LIMIT 1"""
+    sql = """SELECT * FROM images WHERE posted = 0 AND downloaded = 0 ORDER BY upvotes DESC LIMIT 1"""
     cur = conn.cursor()
     cur.execute(sql)
     row = cur.fetchall()

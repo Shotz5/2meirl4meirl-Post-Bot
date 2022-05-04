@@ -12,9 +12,6 @@ def main():
     # if (add_column("upvotes", conn)):
     #     print("Column added")
 
-    # pull_latest_from_reddit(conn)
-    # print_table_test(conn)
-
     while(True):
         pull_latest_from_reddit(conn)
         # twitter_oauth_generation()
@@ -167,7 +164,7 @@ def pull_latest_from_reddit(conn):
             post_title = i["data"]["title"]
             fixed_url = html.unescape(image_url)
             upvotes = i["data"]["ups"]
-            data = (file_full_name, post_title, fixed_url, op_url, False, False, False, upvotes)
+            data = (file_full_name, post_title, fixed_url, op_url, False, False, False, upvotes, upvotes)
             data_tuples.append(data)
             
         # elif i["data"]["is_video"] == True:
@@ -235,7 +232,8 @@ def add_column(column_name, conn):
 
 def insert_image_data(conn, data):
     sql = ''' INSERT INTO images(file_name, post_title, url, id, posted, downloaded, deleted, upvotes)
-              VALUES(?,?,?,?,?,?,?,?) ON CONFLICT DO NOTHING '''
+              VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(file_name) DO UPDATE SET upvotes = ? 
+              WHERE posted = 0 AND downloaded = 0 AND deleted = 0 '''
     try:
         cur = conn.cursor()
         cur.execute(sql, data)

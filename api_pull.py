@@ -22,7 +22,7 @@ def main():
             tweet_uploaded_photo(conn, auth, full_file_name)
             print(read_image_data(conn, full_file_name))
             conn.commit()
-        time.sleep(900)
+        time.sleep(1800)
     # print_table(conn)
     # print_table_test(conn)
 
@@ -88,7 +88,7 @@ def upload_random_photo(conn, auth):
     cur.execute(sql)
     row = cur.fetchall()
 
-    if (row == None):
+    if (row[0] == None):
         print("No new images to upload")
         return None
 

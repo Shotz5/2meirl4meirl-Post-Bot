@@ -86,7 +86,7 @@ def upload_random_photo(conn, auth):
     cur.execute(sql)
     row = cur.fetchall()
 
-    if (cur.rowcount <= 0 or row is None):
+    if (row is None):
         print("No new images to upload")
         return None
 

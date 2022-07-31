@@ -20,7 +20,7 @@ def main():
             tweet_uploaded_photo(conn, auth, full_file_name)
             print(read_image_data(conn, full_file_name))
             conn.commit()
-        time.sleep(1800)
+        time.sleep(3600)
     # print_table(conn)
     # print_table_test(conn)
 

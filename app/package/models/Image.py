@@ -20,7 +20,7 @@ class Image:
         return [self.file_name, self.post_title, self.url, self.id, self.posted, self.downloaded, self.twitter_media_id, self.deleted, self.upvotes];
 
     def save(self):
-        with Database("image_data.db") as db:
+        with Database("package/storage/image_data.db") as db:
             arr = self.toArray();
             res = None;
 
@@ -62,19 +62,22 @@ class Image:
 
     @staticmethod
     def fetchImageByFileName(file_name):
-        with Database("image_data.db") as db:
+        with Database("package/storage/image_data.db") as db:
             res = db.query("""
                 SELECT *
                 FROM images
                 WHERE file_name = ?
             """, (file_name,), False);
 
-            obj = Image(*res);
-            return obj
+            if (res):
+                obj = Image(*res);
+                return obj
+            else:
+                return None;
 
     @staticmethod
     def fetchRandomImage():
-        with Database("image_data.db") as db:
+        with Database("package/storage/image_data.db") as db:
             res = db.query("""
                 SELECT * 
                 FROM images 
@@ -83,12 +86,15 @@ class Image:
                 DESC
             """, (), True);
 
-            obj = Image(*res);
-            return obj;
+            if (res):
+                obj = Image(*res);
+                return obj
+            else:
+                return None;
 
     @staticmethod
     def fetchAllRecords():
-        with Database("image_data.db") as db:
+        with Database("package/storage/image_data.db") as db:
             res = db.query("""
                 SELECT * 
                 FROM images 
@@ -100,7 +106,7 @@ class Image:
 
     @staticmethod
     def deleteAllRecords():
-        with Database("image_data.db") as db:
+        with Database("package/storage/image_data.db") as db:
             res = db.execute("""
                 DELETE
                 FROM images 

@@ -1,34 +1,41 @@
-from email import header
-from package.models.Image import *
-from package.config.config import subreddit, api_info
+from package.models import *
+from package.migrations import *
+from package.config.config import *
 from requests_oauthlib import OAuth1Session
 import requests
 import json
+import time
 
 def main():
+    # Run Migrations
+    if (Migration1.migrate()):
+        print("Table created or already exists.");
+
     auth = twitter_sign_in();
     while (not auth):
-        twitter_sign_in();
+        if (twitter_oauth_gen()):
+            auth = twitter_sign_in();
 
-    save_latest_posts_from_reddit(subreddit)
+    while(True):
+        save_latest_posts_from_reddit(subreddit);
 
-    image = Image.fetchRandomImage();
-    print(image);
+        image = Image.fetchRandomImage();
 
-    if (image):
-        if (download_photo(image)):
-            if (upload_photo(auth, image)):
-                if (tweet_photo(auth, image)):
-                    print("Tweeted photo: ", image);
-                    image.save();
+        if (image):
+            if (download_photo(image)):
+                if (upload_photo(auth, image)):
+                    if (tweet_photo(auth, image)):
+                        print("Tweeted photo: ", image);
+                        image.save();
+                    else:
+                        print("Failed to tweet photo");
                 else:
-                    print("Failed to tweet photo");
+                    print("Failed to upload photo");
             else:
-                print("Failed to upload photo");
+                print("Failed to download photo");
         else:
-            print("Failed to download photo");
-    else:
-        print("Failed to fetch random image");
+            print("Failed to fetch random image");
+        time.sleep(3600);
 
 def twitter_sign_in():
     with open("package/config/oauth_info.json", "r") as f:
@@ -46,7 +53,7 @@ def twitter_sign_in():
     resp = auth.get(test_url);
 
     if (resp.status_code == 401):
-        return twitter_oauth_gen();
+        return False;
     elif (resp.status_code == 200):
         return auth;
     else:

@@ -1,2 +1,3 @@
 from package.models.Image import *;
-__all__ = ["Image"];
+from package.models.Upload import *;
+__all__ = ["Image", "Upload"];

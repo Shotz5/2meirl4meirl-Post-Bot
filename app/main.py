@@ -5,6 +5,7 @@ from requests_oauthlib import OAuth1Session
 import requests
 import json
 import time
+import os
 
 def main():
     # Run Migrations
@@ -16,26 +17,24 @@ def main():
         if (twitter_oauth_gen()):
             auth = twitter_sign_in();
 
-    while(True):
+    while (True):
         save_latest_posts_from_reddit(subreddit);
 
         image = Image.fetchRandomImage();
 
         if (image):
             if (download_photo(image)):
-                if (upload_photo(auth, image)):
-                    if (tweet_photo(auth, image)):
-                        print("Tweeted photo: ", image);
-                        image.save();
-                    else:
-                        print("Failed to tweet photo");
+                image.save();
+                if (Upload(auth, image).upload_and_tweet_photo()):
+                    print("Tweeted photo: ", image);
+                    image.save();
                 else:
                     print("Failed to upload photo");
             else:
                 print("Failed to download photo");
         else:
             print("Failed to fetch random image");
-        time.sleep(3600);
+        time.sleep(1800);
 
 def twitter_sign_in():
     with open("package/config/oauth_info.json", "r") as f:
@@ -141,40 +140,6 @@ def download_photo(image):
         image.downloaded = True;
         return True;
     except:
-        return False;
-
-def upload_photo(auth, image):
-    media_api = "https://upload.twitter.com/1.1/media/upload.json"
-    media = auth.post(media_api,
-                      files={"media": open("package/storage/images/" + image.file_name, "rb")})
-    
-    if (media.status_code == 200):
-        image.twitter_media_id = media.json()["media_id_string"];
-        return True;
-    else:
-        print(media.text)
-        return False;
-
-def tweet_photo(auth, image):
-    tweet_api = "https://api.twitter.com/2/tweets"
-    tweet_object_image = {
-        "text": image.post_title + " redd.it/" + image.id,
-        "media": {
-            "media_ids": [image.twitter_media_id]
-        }
-    }
-    tweet_headers = {"Content-Type": "application/json"}
-    response = auth.post(
-        tweet_api,
-        headers=tweet_headers,
-        json=tweet_object_image
-    )
-
-    if (response.status_code == 201):
-        image.posted = True;
-        return True;
-    else:
-        print(response.text);
         return False;
 
 if __name__ == "__main__":

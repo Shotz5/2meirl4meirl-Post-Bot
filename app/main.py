@@ -33,7 +33,7 @@ def main():
             else:
                 print("Failed to download photo");
         else:
-            print("Failed to fetch random image");
+            print("Failed to fetch random image, no new images available");
         time.sleep(1800);
 
 def twitter_sign_in():

@@ -129,4 +129,5 @@ dmypy.json
 .pyre/
 
 images.*
+app/log.txt
 image_data.*

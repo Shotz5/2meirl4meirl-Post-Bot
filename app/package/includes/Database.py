@@ -39,7 +39,7 @@ class Database:
     def query(self, sql, params=None, fetchOne=False):
         self.cursor.execute(sql, params or ());
         res = self.fetchAll();
-        if (len(res) == 1 or fetchOne):
+        if (len(res) > 0 and fetchOne):
             return res[0];
         else:
             return res;

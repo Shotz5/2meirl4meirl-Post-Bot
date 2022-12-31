@@ -67,7 +67,7 @@ class Image:
                 SELECT *
                 FROM images
                 WHERE file_name = ?
-            """, (file_name,), False);
+            """, (file_name,), True);
 
             if (res):
                 obj = Image(*res);
@@ -88,9 +88,9 @@ class Image:
 
             if (res):
                 obj = Image(*res);
-                return obj
+                return obj;
             else:
-                return None;
+                return False;
 
     @staticmethod
     def fetchAllRecords():

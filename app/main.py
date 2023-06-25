@@ -22,12 +22,6 @@ def main():
 
         image = Image.fetchRandomImage();
 
-        print(image);
-        image.downloaded = True;
-        image.posted = True;
-        image.save();
-        exit;
-
         if (image):
             if (download_photo(image)):
                 image.save();

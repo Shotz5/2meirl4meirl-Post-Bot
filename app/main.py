@@ -22,6 +22,8 @@ def main():
 
         image = Image.fetchRandomImage();
 
+        print(image);
+
         if (image):
             if (download_photo(image)):
                 image.save();
@@ -34,7 +36,7 @@ def main():
                 print("Failed to download photo");
         else:
             print("Failed to fetch random image, no new images available");
-        time.sleep(1800);
+        time.sleep(3600);
 
 def twitter_sign_in():
     with open("package/config/oauth_info.json", "r") as f:
